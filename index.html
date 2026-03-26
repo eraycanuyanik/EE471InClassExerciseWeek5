@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modern Hesap Makinesi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="calculator" aria-label="Hesap makinesi">
+        <div class="screen">
+          <p class="history" id="history"></p>
+          <p class="display" id="display">0</p>
+        </div>
+
+        <div class="keys" id="keys">
+          <button class="key key--function" data-action="clear">AC</button>
+          <button class="key key--function" data-action="delete">DEL</button>
+          <button class="key key--function" data-action="percent">%</button>
+          <button class="key key--operator" data-value="/">÷</button>
+
+          <button class="key" data-value="7">7</button>
+          <button class="key" data-value="8">8</button>
+          <button class="key" data-value="9">9</button>
+          <button class="key key--operator" data-value="*">×</button>
+
+          <button class="key" data-value="4">4</button>
+          <button class="key" data-value="5">5</button>
+          <button class="key" data-value="6">6</button>
+          <button class="key key--operator" data-value="-">−</button>
+
+          <button class="key" data-value="1">1</button>
+          <button class="key" data-value="2">2</button>
+          <button class="key" data-value="3">3</button>
+          <button class="key key--operator" data-value="+">+</button>
+
+          <button class="key key--wide" data-action="toggle-sign">+/-</button>
+          <button class="key" data-value="0">0</button>
+          <button class="key" data-value=".">,</button>
+          <button class="key key--operator key--equals" data-action="equals">=</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="./script.js"></script>
+  </body>
+</html>
