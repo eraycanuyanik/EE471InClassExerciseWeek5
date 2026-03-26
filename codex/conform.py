@@ -1,92 +1,113 @@
-"""
-Programming for the Puzzled -- Srini Devadas
-You Will All Conform
+"""Cap-conform problem with clean, testable engineering structure.
 
-Input is a list of "F" and "B" values representing forwards and backwards caps.
-Output is the smallest set of commands needed to make everyone face the same way.
+Problem:
+    Given a sequence of cap directions ("F" or "B"), produce the minimum set of
+    instructions required to make everyone face the same way.
 """
 
 from __future__ import annotations
 
-from collections import Counter
-from typing import Iterable
+from dataclasses import dataclass
+from typing import Iterable, Literal
+
+Direction = Literal["F", "B"]
+FORWARD: Direction = "F"
+BACKWARD: Direction = "B"
+VALID_DIRECTIONS: tuple[Direction, Direction] = (FORWARD, BACKWARD)
 
 
-CapDirection = str
-Interval = tuple[int, int, CapDirection]
-VALID_DIRECTIONS = {"F", "B"}
+@dataclass(frozen=True)
+class Interval:
+    """Closed interval [start, end] of equal cap direction."""
+
+    start: int
+    end: int
+    direction: Direction
 
 
-def build_intervals(caps: list[CapDirection]) -> list[Interval]:
-    """Group consecutive cap directions into `(start, end, direction)` tuples."""
+def _is_direction(value: str) -> bool:
+    """Runtime type guard helper for direction values."""
+    return value in VALID_DIRECTIONS
+
+
+def validate_caps(caps: Iterable[str]) -> list[Direction]:
+    """Validate and normalize input sequence.
+
+    Raises:
+        ValueError: If an unsupported symbol is encountered.
+    """
+    normalized = list(caps)
+    invalid_values = sorted({value for value in normalized if not _is_direction(value)})
+    if invalid_values:
+        raise ValueError(
+            f"Invalid cap values: {invalid_values}. Allowed values are only 'F' and 'B'."
+        )
+    return [value for value in normalized if _is_direction(value)]
+
+
+def build_intervals(caps: list[Direction]) -> list[Interval]:
+    """Group consecutive equal directions into compact intervals."""
     if not caps:
         return []
 
     intervals: list[Interval] = []
     start = 0
 
-    for index in range(1, len(caps)):
-        if caps[index] != caps[start]:
-            intervals.append((start, index - 1, caps[start]))
-            start = index
+    for idx in range(1, len(caps)):
+        # Direction boundary detected -> close current interval.
+        if caps[idx] != caps[start]:
+            intervals.append(Interval(start=start, end=idx - 1, direction=caps[start]))
+            start = idx
 
-    intervals.append((start, len(caps) - 1, caps[start]))
+    intervals.append(Interval(start=start, end=len(caps) - 1, direction=caps[start]))
     return intervals
 
 
-def choose_flip_direction(intervals: Iterable[Interval]) -> CapDirection:
-    """Return the direction with fewer intervals, which is the cheaper group to flip."""
-    counts = Counter(direction for _, _, direction in intervals)
-    return "F" if counts["F"] < counts["B"] else "B"
+def choose_direction_to_flip(intervals: list[Interval]) -> Direction:
+    """Flip the direction that appears in fewer contiguous groups."""
+    forward_groups = sum(1 for interval in intervals if interval.direction == FORWARD)
+    backward_groups = len(intervals) - forward_groups
+    return FORWARD if forward_groups < backward_groups else BACKWARD
 
 
-def format_instruction(start: int, end: int) -> str:
-    """Create a user-facing instruction for a single interval."""
-    if start == end:
-        return f"Person in position {start} flip your cap!"
-
-    return f"People in positions {start} through {end} flip your caps!"
-
-
-def validate_caps(caps: Iterable[CapDirection]) -> list[CapDirection]:
-    """Normalize input to a list and reject unsupported direction values."""
-    normalized_caps = list(caps)
-    invalid_values = sorted({cap for cap in normalized_caps if cap not in VALID_DIRECTIONS})
-
-    if invalid_values:
-        invalid_display = ", ".join(invalid_values)
-        raise ValueError(f"Unsupported cap directions: {invalid_display}")
-
-    return normalized_caps
+def format_instruction(interval: Interval) -> str:
+    """Create a human-readable instruction for one interval."""
+    if interval.start == interval.end:
+        return f"Person in position {interval.start} flip your cap!"
+    return f"People in positions {interval.start} through {interval.end} flip your caps!"
 
 
-def please_conform(caps: Iterable[CapDirection]) -> None:
-    """Print the minimal set of instructions needed to make everyone conform."""
-    normalized_caps = validate_caps(caps)
-    intervals = build_intervals(normalized_caps)
-
+def get_flip_commands(caps: Iterable[str]) -> list[str]:
+    """Return minimal flip instructions for the given cap sequence."""
+    intervals = build_intervals(validate_caps(caps))
     if not intervals:
-        return
+        return []
 
-    flip_direction = choose_flip_direction(intervals)
+    direction_to_flip = choose_direction_to_flip(intervals)
+    return [
+        format_instruction(interval)
+        for interval in intervals
+        if interval.direction == direction_to_flip
+    ]
 
-    for start, end, direction in intervals:
-        if direction == flip_direction:
-            print(format_instruction(start, end))
+
+def please_conform(caps: Iterable[str]) -> None:
+    """Print minimal flip instructions (kept for backward compatibility)."""
+    for command in get_flip_commands(caps):
+        print(command)
 
 
-def main() -> None:
-    """Run a small demo when the module is executed directly."""
-    samples = [
+def _demo() -> None:
+    """Small executable demonstration."""
+    examples = [
         ["F", "F", "B", "B", "B", "F", "B", "B", "B", "F", "F", "B", "F"],
         ["F", "F", "B", "B", "B", "F", "B", "B", "B", "F", "F", "F", "F"],
     ]
-
-    for sample in samples:
-        print(f"Caps: {sample}")
-        please_conform(sample)
+    for index, caps in enumerate(examples, start=1):
+        print(f"Example {index}: {caps}")
+        please_conform(caps)
         print()
 
 
 if __name__ == "__main__":
-    main()
+    _demo()
