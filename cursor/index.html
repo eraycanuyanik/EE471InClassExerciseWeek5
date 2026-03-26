@@ -1,54 +1,936 @@
 <!doctype html>
 <html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Modern Hesap Makinesi</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="./style.css" />
-  </head>
-  <body>
-    <main class="app">
-      <section class="calculator" aria-label="Hesap makinesi">
-        <div class="screen">
-          <p class="history" id="history"></p>
-          <p class="display" id="display">0</p>
-        </div>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nova Calc</title>
+  <style>
+    :root {
+      --bg: #07111f;
+      --bg-soft: #0f2036;
+      --panel: rgba(9, 20, 37, 0.72);
+      --panel-strong: rgba(12, 26, 46, 0.9);
+      --line: rgba(255, 255, 255, 0.08);
+      --text: #f8fbff;
+      --muted: #8da4bf;
+      --accent: #6ee7ff;
+      --accent-2: #ff8bc7;
+      --accent-3: #8b7cff;
+      --danger: #ff6b7a;
+      --shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+      --radius-xl: 32px;
+      --radius-lg: 24px;
+      --radius-md: 18px;
+      --radius-sm: 14px;
+    }
 
-        <div class="keys" id="keys">
-          <button class="key key--function" data-action="clear">AC</button>
-          <button class="key key--function" data-action="delete">DEL</button>
-          <button class="key key--function" data-action="percent">%</button>
-          <button class="key key--operator" data-value="/">÷</button>
+    * {
+      box-sizing: border-box;
+    }
 
-          <button class="key" data-value="7">7</button>
-          <button class="key" data-value="8">8</button>
-          <button class="key" data-value="9">9</button>
-          <button class="key key--operator" data-value="*">×</button>
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+    }
 
-          <button class="key" data-value="4">4</button>
-          <button class="key" data-value="5">5</button>
-          <button class="key" data-value="6">6</button>
-          <button class="key key--operator" data-value="-">−</button>
+    body {
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(110, 231, 255, 0.22), transparent 28%),
+        radial-gradient(circle at 85% 15%, rgba(255, 139, 199, 0.2), transparent 24%),
+        radial-gradient(circle at 50% 100%, rgba(139, 124, 255, 0.22), transparent 26%),
+        linear-gradient(135deg, #050b14 0%, #0a1526 48%, #09101b 100%);
+      overflow-x: hidden;
+    }
 
-          <button class="key" data-value="1">1</button>
-          <button class="key" data-value="2">2</button>
-          <button class="key" data-value="3">3</button>
-          <button class="key key--operator" data-value="+">+</button>
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      inset: auto;
+      border-radius: 999px;
+      filter: blur(30px);
+      opacity: 0.65;
+      pointer-events: none;
+    }
 
-          <button class="key key--wide" data-action="toggle-sign">+/-</button>
-          <button class="key" data-value="0">0</button>
-          <button class="key" data-value=".">,</button>
-          <button class="key key--operator key--equals" data-action="equals">=</button>
-        </div>
-      </section>
-    </main>
+    body::before {
+      width: 16rem;
+      height: 16rem;
+      top: 8%;
+      left: 8%;
+      background: rgba(110, 231, 255, 0.12);
+      animation: floatBlob 12s ease-in-out infinite;
+    }
 
-    <script src="./script.js"></script>
-  </body>
+    body::after {
+      width: 18rem;
+      height: 18rem;
+      right: 10%;
+      bottom: 8%;
+      background: rgba(255, 139, 199, 0.11);
+      animation: floatBlob 14s ease-in-out infinite reverse;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+    }
+
+    .calculator {
+      position: relative;
+      width: min(980px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+      gap: 18px;
+      padding: 18px;
+      border-radius: 36px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(24px) saturate(150%);
+    }
+
+    .main,
+    .sidebar {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+    }
+
+    .main {
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      padding: 10px 4px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 58px;
+      height: 58px;
+      display: grid;
+      place-items: center;
+      border-radius: 20px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #04111f;
+      background: linear-gradient(135deg, var(--accent) 0%, #b6fff2 38%, var(--accent-2) 100%);
+      box-shadow: 0 14px 35px rgba(110, 231, 255, 0.28);
+    }
+
+    .brand-copy h1,
+    .brand-copy p,
+    .section-title,
+    .meta-chip,
+    .result,
+    .expression,
+    .history-item strong,
+    .key {
+      margin: 0;
+    }
+
+    .brand-copy h1 {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .brand-copy p {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .ghost-btn,
+    .chip-btn {
+      border: 0;
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    }
+
+    .ghost-btn {
+      min-width: 48px;
+      height: 48px;
+      padding: 0 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      font: inherit;
+    }
+
+    .ghost-btn:hover,
+    .chip-btn:hover,
+    .key:hover,
+    .history-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .display {
+      position: relative;
+      background:
+        linear-gradient(180deg, rgba(8, 18, 32, 0.88), rgba(12, 26, 46, 0.88)),
+        linear-gradient(120deg, rgba(255, 255, 255, 0.06), transparent);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 30px;
+      padding: 24px;
+      min-height: 240px;
+      display: grid;
+      align-content: space-between;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+    }
+
+    .display::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(125deg, rgba(110, 231, 255, 0.08), transparent 28%),
+        radial-gradient(circle at 80% 15%, rgba(255, 139, 199, 0.14), transparent 20%);
+      pointer-events: none;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .meta-chip {
+      padding: 9px 14px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(8px);
+    }
+
+    .screen {
+      position: relative;
+      z-index: 1;
+      text-align: right;
+      display: grid;
+      gap: 14px;
+    }
+
+    .expression {
+      min-height: 3rem;
+      color: #9eb3ca;
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      word-break: break-word;
+      opacity: 0.95;
+    }
+
+    .result {
+      font-size: clamp(2.8rem, 7vw, 5.2rem);
+      line-height: 0.95;
+      font-weight: 700;
+      letter-spacing: -0.06em;
+      word-break: break-word;
+      text-wrap: balance;
+    }
+
+    .mini-stats {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .stat span {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .key {
+      min-height: 74px;
+      border: 0;
+      border-radius: 22px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      transition: transform 140ms ease, background 140ms ease, box-shadow 140ms ease;
+    }
+
+    .key:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    .key-soft {
+      color: #bdd1e7;
+      background: linear-gradient(180deg, rgba(80, 104, 134, 0.24), rgba(45, 60, 79, 0.2));
+    }
+
+    .key-operator {
+      background: linear-gradient(135deg, rgba(110, 231, 255, 0.24), rgba(139, 124, 255, 0.28));
+      color: #ffffff;
+    }
+
+    .key-equals {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+      color: #07111f;
+      font-size: 1.6rem;
+      box-shadow: 0 18px 30px rgba(110, 231, 255, 0.18);
+    }
+
+    .key-danger {
+      color: #ffd5d9;
+      background: linear-gradient(180deg, rgba(255, 107, 122, 0.2), rgba(255, 107, 122, 0.08));
+    }
+
+    .key-zero {
+      grid-column: span 2;
+    }
+
+    .sidebar {
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+      align-content: start;
+      background:
+        linear-gradient(180deg, rgba(10, 21, 38, 0.94), rgba(10, 18, 32, 0.88)),
+        radial-gradient(circle at top right, rgba(139, 124, 255, 0.14), transparent 24%);
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .chip-btn {
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      font: inherit;
+    }
+
+    .memory-card,
+    .history-card {
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .memory-value {
+      font-size: 2rem;
+      letter-spacing: -0.05em;
+      margin: 6px 0 16px;
+    }
+
+    .memory-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 10px;
+      max-height: 390px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .history-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .history-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+    }
+
+    .history-item,
+    .history-empty {
+      border-radius: 18px;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .history-item {
+      cursor: pointer;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+    }
+
+    .history-item p,
+    .history-empty,
+    .helper-text {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .history-item strong {
+      display: block;
+      margin-top: 8px;
+      font-size: 1.15rem;
+      letter-spacing: -0.03em;
+    }
+
+    .helper-text {
+      line-height: 1.5;
+    }
+
+    @media (max-width: 920px) {
+      .calculator {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        order: -1;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        padding: 16px;
+      }
+
+      .calculator,
+      .main,
+      .sidebar {
+        border-radius: 26px;
+      }
+
+      .main,
+      .sidebar {
+        padding: 16px;
+      }
+
+      .hero {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .hero-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .mini-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .key {
+        min-height: 64px;
+        border-radius: 18px;
+      }
+    }
+
+    @keyframes floatBlob {
+      0%, 100% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      50% {
+        transform: translate3d(12px, -18px, 0) scale(1.08);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="calculator" aria-label="Modern hesap makinesi">
+      <div class="main">
+        <header class="hero">
+          <div class="brand">
+            <div class="brand-mark">N</div>
+            <div class="brand-copy">
+              <h1>Nova Calc</h1>
+              <p>Modern, parlak ve akıcı bir hesap makinesi deneyimi.</p>
+            </div>
+          </div>
+          <div class="hero-actions">
+            <button class="ghost-btn" id="copyResultBtn" type="button" aria-label="Sonucu kopyala">Kopyala</button>
+            <button class="ghost-btn" id="clearAllBtn" type="button" aria-label="Hepsini temizle">Sıfırla</button>
+          </div>
+        </header>
+
+        <section class="display" aria-live="polite">
+          <div class="meta-row">
+            <div class="meta-chip">Klavye destekli</div>
+            <div class="meta-chip" id="statusChip">Hazır</div>
+          </div>
+
+          <div class="screen">
+            <p class="expression" id="expression">0</p>
+            <h2 class="result" id="result">0</h2>
+          </div>
+
+          <div class="mini-stats">
+            <div class="stat">
+              <span>Hafıza</span>
+              <strong id="memoryPreview">0</strong>
+            </div>
+            <div class="stat">
+              <span>Sonuç</span>
+              <strong id="previewLabel">Canlı önizleme</strong>
+            </div>
+            <div class="stat">
+              <span>Durum</span>
+              <strong id="modeLabel">Standart mod</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="keypad" id="keypad">
+          <button class="key key-soft" data-action="memory-clear" type="button">MC</button>
+          <button class="key key-soft" data-action="memory-recall" type="button">MR</button>
+          <button class="key key-soft" data-action="percent" type="button">%</button>
+          <button class="key key-operator" data-value="/" type="button">÷</button>
+
+          <button class="key key-danger" data-action="clear" type="button">AC</button>
+          <button class="key key-soft" data-action="delete" type="button">⌫</button>
+          <button class="key key-soft" data-action="decimal" type="button">.</button>
+          <button class="key key-operator" data-value="*" type="button">×</button>
+
+          <button class="key" data-value="7" type="button">7</button>
+          <button class="key" data-value="8" type="button">8</button>
+          <button class="key" data-value="9" type="button">9</button>
+          <button class="key key-operator" data-value="-" type="button">-</button>
+
+          <button class="key" data-value="4" type="button">4</button>
+          <button class="key" data-value="5" type="button">5</button>
+          <button class="key" data-value="6" type="button">6</button>
+          <button class="key key-operator" data-value="+" type="button">+</button>
+
+          <button class="key" data-value="1" type="button">1</button>
+          <button class="key" data-value="2" type="button">2</button>
+          <button class="key" data-value="3" type="button">3</button>
+          <button class="key key-soft" data-action="memory-add" type="button">M+</button>
+
+          <button class="key key-zero" data-value="0" type="button">0</button>
+          <button class="key key-soft" data-action="memory-subtract" type="button">M-</button>
+          <button class="key key-equals" data-action="equals" type="button">=</button>
+        </section>
+      </div>
+
+      <aside class="sidebar">
+        <section class="memory-card">
+          <div class="section-head">
+            <h3 class="section-title">Hafıza Paneli</h3>
+            <span class="meta-chip">Anlık kayıt</span>
+          </div>
+          <div class="memory-value" id="memoryValue">0</div>
+          <div class="memory-actions">
+            <button class="chip-btn" data-action="memory-clear" type="button">Temizle</button>
+            <button class="chip-btn" data-action="memory-recall" type="button">Getir</button>
+            <button class="chip-btn" data-action="memory-add" type="button">Ekle</button>
+            <button class="chip-btn" data-action="memory-subtract" type="button">Cikar</button>
+          </div>
+        </section>
+
+        <section class="history-card">
+          <div class="section-head">
+            <h3 class="section-title">Gecmis</h3>
+            <button class="chip-btn" id="clearHistoryBtn" type="button">Temizle</button>
+          </div>
+          <div class="history-list" id="historyList">
+            <div class="history-empty">Henuz islem yapilmadi.</div>
+          </div>
+        </section>
+
+        <p class="helper-text">
+          `Enter` ile sonucu alabilir, `Backspace` ile silebilir, `Escape` ile ekrani temizleyebilirsin.
+        </p>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const expressionEl = document.getElementById("expression");
+      const resultEl = document.getElementById("result");
+      const statusChip = document.getElementById("statusChip");
+      const previewLabel = document.getElementById("previewLabel");
+      const modeLabel = document.getElementById("modeLabel");
+      const memoryValueEl = document.getElementById("memoryValue");
+      const memoryPreviewEl = document.getElementById("memoryPreview");
+      const historyListEl = document.getElementById("historyList");
+      const keypadEl = document.getElementById("keypad");
+
+      let expression = "";
+      let memory = 0;
+      let history = [];
+
+      const operators = new Set(["+", "-", "*", "/"]);
+
+      function formatNumber(value) {
+        if (!Number.isFinite(value)) {
+          return "Hata";
+        }
+
+        if (Math.abs(value) >= 1e12) {
+          return value.toExponential(6);
+        }
+
+        const rounded = Math.round((value + Number.EPSILON) * 1e12) / 1e12;
+        return String(rounded).replace(/\.0$/, "");
+      }
+
+      function normalizeExpression(raw) {
+        return raw.replace(/\s+/g, "");
+      }
+
+      function safeEvaluate(rawExpression) {
+        if (!rawExpression) {
+          return 0;
+        }
+
+        const normalized = normalizeExpression(rawExpression);
+
+        if (!/^[\d+\-*/.()]+$/.test(normalized)) {
+          throw new Error("invalid");
+        }
+
+        if (/[*\/]{2,}/.test(normalized)) {
+          throw new Error("invalid");
+        }
+
+        const value = Function("\"use strict\"; return (" + normalized + ");")();
+
+        if (typeof value !== "number" || Number.isNaN(value) || !Number.isFinite(value)) {
+          throw new Error("invalid");
+        }
+
+        return value;
+      }
+
+      function getPreview() {
+        if (!expression) {
+          return "0";
+        }
+
+        try {
+          return formatNumber(safeEvaluate(expression));
+        } catch (error) {
+          return "Hata";
+        }
+      }
+
+      function updateHistory() {
+        historyListEl.innerHTML = "";
+
+        if (!history.length) {
+          historyListEl.innerHTML = '<div class="history-empty">Henuz islem yapilmadi.</div>';
+          return;
+        }
+
+        history.forEach((item) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "history-item";
+          button.innerHTML = "<p>" + escapeHtml(item.expression) + "</p><strong>" + escapeHtml(item.result) + "</strong>";
+          button.addEventListener("click", function () {
+            expression = item.expression;
+            render("Gecmisten yuklendi");
+          });
+          historyListEl.appendChild(button);
+        });
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function saveState() {
+        localStorage.setItem("nova-calc-history", JSON.stringify(history));
+        localStorage.setItem("nova-calc-memory", String(memory));
+      }
+
+      function loadState() {
+        try {
+          const savedHistory = JSON.parse(localStorage.getItem("nova-calc-history") || "[]");
+          history = Array.isArray(savedHistory) ? savedHistory : [];
+          memory = Number(localStorage.getItem("nova-calc-memory") || "0") || 0;
+        } catch (error) {
+          history = [];
+          memory = 0;
+        }
+      }
+
+      function render(statusText) {
+        const preview = getPreview();
+        expressionEl.textContent = expression || "0";
+        resultEl.textContent = preview;
+        statusChip.textContent = statusText || (preview === "Hata" ? "Kontrol et" : "Hazir");
+        previewLabel.textContent = preview === "Hata" ? "Gecersiz ifade" : "Canli onizleme";
+        modeLabel.textContent = expression ? "Yazim aktif" : "Standart mod";
+
+        const memoryText = formatNumber(memory);
+        memoryValueEl.textContent = memoryText;
+        memoryPreviewEl.textContent = memoryText;
+
+        updateHistory();
+      }
+
+      function clearExpression() {
+        expression = "";
+        render("Temizlendi");
+      }
+
+      function deleteLast() {
+        expression = expression.slice(0, -1);
+        render("Son karakter silindi");
+      }
+
+      function appendValue(value) {
+        if (value === ".") {
+          const currentChunk = expression.split(/[+\-*/]/).pop();
+          if (currentChunk.includes(".")) {
+            return;
+          }
+        }
+
+        if (operators.has(value)) {
+          if (!expression && value !== "-") {
+            return;
+          }
+
+          const lastChar = expression.slice(-1);
+          if (operators.has(lastChar)) {
+            expression = expression.slice(0, -1) + value;
+            render("Operator guncellendi");
+            return;
+          }
+        }
+
+        expression += value;
+        render();
+      }
+
+      function appendPercent() {
+        if (!expression) {
+          return;
+        }
+
+        const preview = getPreview();
+        if (preview === "Hata") {
+          return;
+        }
+
+        expression = formatNumber(Number(preview) / 100);
+        render("Yuzdeye cevrildi");
+      }
+
+      function execute() {
+        if (!expression) {
+          render("Hazir");
+          return;
+        }
+
+        const preview = getPreview();
+        if (preview === "Hata") {
+          render("Gecersiz ifade");
+          return;
+        }
+
+        history.unshift({
+          expression: expression,
+          result: preview
+        });
+        history = history.slice(0, 12);
+        expression = preview;
+        saveState();
+        render("Sonuc hazir");
+      }
+
+      function copyResult() {
+        const value = resultEl.textContent;
+        navigator.clipboard.writeText(value).then(function () {
+          render("Sonuc kopyalandi");
+        }).catch(function () {
+          render("Kopyalanamadi");
+        });
+      }
+
+      function updateMemory(action) {
+        const preview = getPreview();
+        const value = preview === "Hata" ? 0 : Number(preview);
+
+        if (action === "memory-clear") {
+          memory = 0;
+          render("Hafiza temizlendi");
+        }
+
+        if (action === "memory-recall") {
+          expression += formatNumber(memory);
+          render("Hafiza eklendi");
+        }
+
+        if (action === "memory-add") {
+          memory += value;
+          render("Hafizaya eklendi");
+        }
+
+        if (action === "memory-subtract") {
+          memory -= value;
+          render("Hafizadan cikarildi");
+        }
+
+        saveState();
+      }
+
+      function clearHistory() {
+        history = [];
+        saveState();
+        render("Gecmis temizlendi");
+      }
+
+      keypadEl.addEventListener("click", function (event) {
+        const key = event.target.closest("[data-value], [data-action]");
+        if (!key) {
+          return;
+        }
+
+        const value = key.dataset.value;
+        const action = key.dataset.action;
+
+        if (value) {
+          appendValue(value);
+          return;
+        }
+
+        if (action === "clear") clearExpression();
+        if (action === "delete") deleteLast();
+        if (action === "decimal") appendValue(".");
+        if (action === "percent") appendPercent();
+        if (action === "equals") execute();
+        if (action && action.startsWith("memory-")) updateMemory(action);
+      });
+
+      document.querySelectorAll("[data-action]").forEach(function (button) {
+        if (button.closest("#keypad")) {
+          return;
+        }
+
+        button.addEventListener("click", function () {
+          const action = button.dataset.action;
+          if (action === "memory-clear" || action === "memory-recall" || action === "memory-add" || action === "memory-subtract") {
+            updateMemory(action);
+          }
+        });
+      });
+
+      document.getElementById("copyResultBtn").addEventListener("click", copyResult);
+      document.getElementById("clearAllBtn").addEventListener("click", function () {
+        expression = "";
+        memory = 0;
+        history = [];
+        saveState();
+        render("Her sey sifirlandi");
+      });
+      document.getElementById("clearHistoryBtn").addEventListener("click", clearHistory);
+
+      window.addEventListener("keydown", function (event) {
+        if (event.ctrlKey || event.metaKey || event.altKey) {
+          return;
+        }
+
+        if (/^\d$/.test(event.key)) {
+          appendValue(event.key);
+          return;
+        }
+
+        if (operators.has(event.key)) {
+          appendValue(event.key);
+          return;
+        }
+
+        if (event.key === ".") {
+          appendValue(".");
+          return;
+        }
+
+        if (event.key === "Enter" || event.key === "=") {
+          event.preventDefault();
+          execute();
+          return;
+        }
+
+        if (event.key === "Backspace") {
+          event.preventDefault();
+          deleteLast();
+          return;
+        }
+
+        if (event.key === "Escape") {
+          clearExpression();
+        }
+      });
+
+      loadState();
+      render("Hazir");
+    })();
+  </script>
+</body>
 </html>
