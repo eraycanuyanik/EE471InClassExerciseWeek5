@@ -1,0 +1,61 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f4f4f9;
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.calculator {
+    background-color: #0d73c5; /* Mavi arka plan */
+    padding: 10px;
+    width: 250px;
+}
+
+.display {
+    background-color: white;
+    color: #444; /* Ekrandaki siyahımsı metin */
+    font-size: 38px;
+    text-align: right;
+    padding: 10px 10px 5px 10px;
+    margin-bottom: 10px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    overflow: hidden;
+}
+
+.buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-gap: 8px; /* Butonlar arası boşluk */
+}
+
+.btn {
+    border: none;
+    font-size: 26px;
+    font-weight: bold;
+    color: white;
+    cursor: pointer;
+    padding: 15px 0;
+    transition: filter 0.1s ease-in-out;
+}
+
+.btn:active {
+    filter: brightness(85%); /* Tıklama efekti */
+}
+
+.num {
+    background-color: #7d7d7d; /* Koyu gri (Sayılar) */
+}
+
+.op {
+    background-color: #9c9c9c; /* Açık gri (Operatörler) */
+}
+
+#equals {
+    background-color: #004d80; /* Daha koyu mavi (Eşittir) */
+}
