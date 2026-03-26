@@ -1,27 +1,12 @@
 const displayEl = document.getElementById("display");
-const historyEl = document.getElementById("history");
 const keysEl = document.getElementById("keys");
 
 const operators = new Set(["+", "-", "*", "/"]);
 let expression = "0";
-let resultShown = false;
-
-function toView(text) {
-  return text.replace(/\*/g, "×").replace(/\//g, "÷").replace(/\./g, ",");
-}
-
-function updateDisplay() {
-  displayEl.textContent = toView(expression);
-}
-
-function normalizeExpression(value) {
-  if (value === "") return "0";
-  if (value.startsWith(".")) return `0${value}`;
-  return value;
-}
+let justCalculated = false;
 
 function safeEval(input) {
-  if (!/^[\d+\-*/.() ]+$/.test(input)) return null;
+  if (!/^[\d+\-*/. ]+$/.test(input)) return null;
 
   try {
     const value = Function(`"use strict"; return (${input});`)();
@@ -32,106 +17,59 @@ function safeEval(input) {
   }
 }
 
-function appendNumber(num) {
-  if (resultShown) {
-    expression = num;
-    resultShown = false;
-    updateDisplay();
-    return;
-  }
+function updateDisplay() {
+  displayEl.textContent = expression;
+}
 
-  if (expression === "0") {
+function appendNumber(num) {
+  if (justCalculated || expression === "0") {
     expression = num;
+    justCalculated = false;
   } else {
     expression += num;
   }
-
   updateDisplay();
 }
 
 function appendDot() {
-  if (resultShown) {
+  if (justCalculated) {
     expression = "0.";
-    resultShown = false;
+    justCalculated = false;
     updateDisplay();
     return;
   }
 
-  const lastPart = expression.split(/[+\-*/]/).pop();
-  if (!lastPart.includes(".")) expression += ".";
-  updateDisplay();
+  const currentChunk = expression.split(/[+\-*/]/).pop() ?? "";
+  if (!currentChunk.includes(".")) {
+    expression += ".";
+    updateDisplay();
+  }
 }
 
 function appendOperator(op) {
-  resultShown = false;
-  const lastChar = expression.at(-1);
-
-  if (operators.has(lastChar)) {
-    expression = `${expression.slice(0, -1)}${op}`;
+  justCalculated = false;
+  const last = expression.at(-1);
+  if (operators.has(last)) {
+    expression = expression.slice(0, -1) + op;
   } else {
     expression += op;
   }
-
-  expression = normalizeExpression(expression);
-  updateDisplay();
-}
-
-function clearAll() {
-  expression = "0";
-  resultShown = false;
-  historyEl.textContent = "";
-  updateDisplay();
-}
-
-function deleteLast() {
-  if (resultShown) {
-    clearAll();
-    return;
-  }
-
-  expression = expression.slice(0, -1);
-  expression = normalizeExpression(expression);
-  updateDisplay();
-}
-
-function toggleSign() {
-  if (expression === "0") return;
-
-  const parts = expression.split(/([+\-*/])/);
-  const last = parts[parts.length - 1];
-
-  if (!last || operators.has(last)) return;
-
-  if (last.startsWith("-")) {
-    parts[parts.length - 1] = last.slice(1);
-  } else {
-    parts[parts.length - 1] = `-${last}`;
-  }
-
-  expression = parts.join("");
-  updateDisplay();
-}
-
-function toPercent() {
-  const value = safeEval(expression);
-  if (value === null) return;
-  expression = (Number(value) / 100).toString();
-  resultShown = true;
-  historyEl.textContent = `${toView(value)}%`;
   updateDisplay();
 }
 
 function calculate() {
-  const value = safeEval(expression);
-  if (value === null) {
-    displayEl.textContent = "Hata";
-    setTimeout(updateDisplay, 800);
+  const result = safeEval(expression);
+  if (result === null) {
+    displayEl.textContent = "Err";
+    setTimeout(() => {
+      expression = "0";
+      updateDisplay();
+    }, 500);
     return;
   }
 
-  historyEl.textContent = `${toView(expression)} =`;
-  expression = value;
-  resultShown = true;
+  expression = result;
+  justCalculated = true;
   updateDisplay();
 }
 
@@ -141,44 +79,23 @@ keysEl.addEventListener("click", (event) => {
 
   const { value, action } = button.dataset;
 
-  if (value) {
-    if (/^\d$/.test(value)) appendNumber(value);
-    else if (value === ".") appendDot();
-    else appendOperator(value);
+  if (action === "equals") {
+    calculate();
     return;
   }
 
-  switch (action) {
-    case "clear":
-      clearAll();
-      break;
-    case "delete":
-      deleteLast();
-      break;
-    case "toggle-sign":
-      toggleSign();
-      break;
-    case "percent":
-      toPercent();
-      break;
-    case "equals":
-      calculate();
-      break;
-    default:
-      break;
-  }
+  if (!value) return;
+  if (/^\d$/.test(value)) return appendNumber(value);
+  if (value === ".") return appendDot();
+  appendOperator(value);
 });
 
 window.addEventListener("keydown", (event) => {
-  const key = event.key;
-
+  const { key } = event;
   if (/^\d$/.test(key)) return appendNumber(key);
   if (key === ".") return appendDot();
   if (operators.has(key)) return appendOperator(key);
-  if (key === "Enter" || key === "=") return calculate();
-  if (key === "Backspace") return deleteLast();
-  if (key.toLowerCase() === "c") return clearAll();
-  if (key === "%") return toPercent();
+  if (key === "=" || key === "Enter") return calculate();
 });
 
 updateDisplay();
